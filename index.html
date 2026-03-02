@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>排班表</title>
+        <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+        <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 15px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        
+        .date-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .date-selector input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .shift-selector {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .shift-selector button {
+            padding: 10px 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .shift-selector button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .table-container {
+            flex: 1;
+            min-width: 300px;
+            overflow-x: auto;
+        }
+        
+        .scheduling-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #ddd;
+        }
+        
+        .scheduling-table th,
+        .scheduling-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        
+        .editable {
+            cursor: pointer;
+        }
+        
+        .editable:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .position-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .position-item {
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            background-color: #f9f9f9;
+        }
+        
+        .add-position {
+            color: #4CAF50;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        
+        .add-position:hover {
+            text-decoration: underline;
+        }
+        
+        .scheduling-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        
+        .scheduling-table .yellow {
+            background-color: #ffffcc;
+        }
+        
+        .scheduling-table .green {
+            background-color: #ccffcc;
+        }
+        
+        .personnel-tags {
+            width: 200px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            flex-shrink: 0;
+        }
+        
+        .personnel-tags h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .tag-input {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .tag-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .tag-input button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .tag-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .person-tag {
+            padding: 6px 10px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+            cursor: grab;
+            text-align: center;
+            position: relative;
+            font-size: 14px;
+        }
+        
+        .person-tag .delete-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 0 4px 0 4px;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 8px;
+            line-height: 20px;
+        }
+        
+        .person-tag:hover {
+            background-color: #bbdefb;
+        }
+        
+        .person-tag:active {
+            cursor: grabbing;
+        }
+        
+        .schedule-cell {
+            min-height: 40px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            margin: -1px 0;
+            padding: 5px;
+        }
+        
+        .schedule-cell:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .scheduling-table td {
+            vertical-align: top;
+        }
+        
+        #helpBtn {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        
+        #saveImageBtn {
+            padding: 12px 24px;
+            font-size: 16px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .date-selector input {
+                padding: 8px;
+                font-size: 14px;
+            }
+            
+            .shift-selector button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .table-container {
+                order: 2;
+            }
+            
+            .personnel-tags {
+                width: 100%;
+                order: 1;
+                margin-bottom: 20px;
+            }
+            
+            .scheduling-table th,
+            .scheduling-table td {
+                padding: 6px;
+                font-size: 14px;
+            }
+            
+            .schedule-cell {
+                min-height: 35px;
+            }
+            
+            .tag-input input {
+                padding: 6px;
+                font-size: 14px;
+            }
+            
+            .tag-input button {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            
+            .tag-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                gap: 8px;
+            }
+            
+            .person-tag {
+                padding: 6px 8px;
+                font-size: 12px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            .person-tag .delete-btn {
+                font-size: 12px;
+                padding: 0 6px;
+                line-height: 16px;
+            }
+            
+            #helpBtn,
+            #saveImageBtn {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            .date-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .date-selector input {
+                width: 100%;
+                max-width: 120px;
+            }
+            
+            .shift-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .shift-selector button {
+                width: 100%;
+                max-width: 200px;
+            }
+            
+            .scheduling-table th,
+            .scheduling-table td {
+                padding: 4px;
+                font-size: 12px;
+            }
+            
+            .schedule-cell {
+                min-height: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 20px;">
+                <h1 class="editable" onclick="editTitle(this)" style="text-align: center; margin-bottom: 15px;">排班表</h1>
+                <div style="display: flex; gap: 10px;">
+                    <button id="helpBtn" style="background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 8px 16px;">帮助</button>
+                    <button id="saveImageBtn" style="background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 10px 20px; font-size: 16px;">保存为图片</button>
+                </div>
+            </div>
+            <div class="date-selector">
+                <input type="number" id="year" placeholder="年" value="2026">
+                <input type="number" id="month" placeholder="月" value="3">
+                <input type="number" id="day" placeholder="日" value="2">
+            </div>
+            <div class="shift-selector">
+                <button class="active" data-shift="two">两班制</button>
+                <button data-shift="three">三班制</button>
+            </div>
+        </div>
+        
+        <!-- 帮助弹窗 -->
+        <div id="helpModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+            <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>使用说明</h2>
+                    <span id="closeHelp" style="color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+                </div>
+                <div style="line-height: 1.6;">
+                    <h3>基本操作</h3>
+                    <ul>
+                        <li><strong>编辑标题</strong>：点击标题文本可以修改标题</li>
+                        <li><strong>选择日期</strong>：在日期选择器中输入年、月、日</li>
+                        <li><strong>切换班次模式</strong>：点击"两班制"或"三班制"按钮</li>
+                    </ul>
+                    
+                    <h3>人员管理</h3>
+                    <ul>
+                        <li><strong>添加人员标签</strong>：在右侧输入人员名字，点击"添加"按钮</li>
+                        <li><strong>删除人员标签</strong>：点击人员标签右上角的×按钮</li>
+                        <li><strong>排班</strong>：将人员标签拖动到左侧班次的人员位置中</li>
+                        <li><strong>删除表内人员</strong>：在人员上右键点击，选择"删除"选项</li>
+                    </ul>
+                    
+                    <h3>表格编辑</h3>
+                    <ul>
+                        <li><strong>编辑产品名称</strong>：点击产品名称单元格</li>
+                        <li><strong>编辑岗位</strong>：点击岗位列表中的岗位</li>
+                        <li><strong>添加岗位</strong>：点击"+ 添加岗位"按钮</li>
+                        <li><strong>编辑定额</strong>：点击定额单元格</li>
+                        <li><strong>添加说明</strong>：点击说明单元格</li>
+                    </ul>
+                    
+                    <h3>特殊状态人员</h3>
+                    <ul>
+                        <li><strong>添加特殊状态人员</strong>：点击表格底部的"+ 添加特殊状态人员"按钮</li>
+                        <li><strong>编辑特殊状态人员</strong>：点击姓名、状态或说明单元格</li>
+                        <li><strong>删除特殊状态人员</strong>：点击"删除"按钮</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="table-container">
+            <table class="scheduling-table" id="scheduleTable">
+                <thead>
+                    <tr>
+                    <th>生产线</th>
+                    <th>产品名称</th>
+                    <th>岗位</th>
+                    <th id="shift1">白班</th>
+                    <th id="shift2">夜班</th>
+                    <th id="shift3" style="display: none;">三班</th>
+                    <th>定额</th>
+                    <th>说明</th>
+                    <th style="display: none;"></th>
+                </tr>
+                </thead>
+                <tbody>
+                    <!-- 表格内容将通过JavaScript动态生成 -->
+                </tbody>
+            </table>
+            </div>
+            
+            <div class="personnel-tags">
+                <h3>人员标签</h3>
+                <div class="tag-input">
+                    <input type="text" id="personName" placeholder="输入人员名字">
+                    <button onclick="addPersonTag()">添加</button>
+                </div>
+                <div class="tag-list" id="tagList">
+                    <!-- 人员标签将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 初始化数据
+        const productionLines = [
+            { line: 'A1', product: '丰田', positions: ['焊接', '检验'] },
+            { line: 'A2', product: '丰田', positions: ['焊接', '检验'] },
+            { line: 'A3', product: '72AD', positions: ['焊接', '平衡点焊', '检验'] },
+            { line: 'A4', product: '7997', positions: ['点焊', '平衡点焊', '检验'] },
+            { line: 'A5', product: '283/2834', positions: ['焊接', '检验'] },
+            { line: 'A6', product: 'ECO2/E0T', positions: ['焊接', '点焊', '检验'] },
+            { line: 'A7', product: '86co', positions: ['焊接', '检验'] },
+            { line: 'A8', product: '59L', positions: ['焊接', '检验'] },
+            { line: 'A10', product: '1188', positions: ['焊接', '检验'] },
+            { line: 'A11', product: '86co', positions: ['焊接', '检验'] },
+            { line: 'A12', product: '1033', positions: ['焊接', '平衡点焊', '检验'] },
+            { line: 'A15', product: '1080/3764', positions: ['焊接', '平衡点焊', '检验', '打码'] },
+            { line: 'A14', product: 'ED6/664/87537', positions: ['焊接', '平衡点焊', '检验'] },
+            { line: 'A16', product: '7987', positions: ['焊接', '点焊', '检验'] },
+            { line: 'A17', product: '5521', positions: ['焊接', '检验'] },
+            { line: 'A18', product: '1379', positions: ['焊接', '检验'] },
+            { line: 'A19', product: '9857', positions: ['焊接', '检验'] }
+        ];
+        
+        let currentShiftMode = 'two'; // 默认两班制
+        let personnelTags = [];
+        let specialStatuses = [];
+        let draggedElement = null;
+        
+        // 保存数据到本地存储
+        function saveData() {
+            try {
+                // 保存基本数据
+                localStorage.setItem('schedulingData', JSON.stringify({
+                    productionLines: productionLines,
+                    personnelTags: personnelTags,
+                    specialStatuses: specialStatuses,
+                    currentShiftMode: currentShiftMode,
+                    date: {
+                        year: document.getElementById('year').value,
+                        month: document.getElementById('month').value,
+                        day: document.getElementById('day').value
+                    }
+                }));
+                
+                // 保存排班数据
+                const scheduleData = [];
+                const scheduleCells = document.querySelectorAll('.schedule-cell');
+                scheduleCells.forEach((cell, index) => {
+                    if (cell.textContent.trim()) {
+                        scheduleData.push({
+                            index: index,
+                            name: cell.textContent.trim()
+                        });
+                    }
+                });
+                localStorage.setItem('scheduleData', JSON.stringify(scheduleData));
+            } catch (error) {
+                console.error('保存数据失败:', error);
+            }
+        }
+        
+        // 从本地存储加载数据
+        function loadData() {
+            try {
+                // 加载基本数据
+                const savedData = localStorage.getItem('schedulingData');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    if (data.productionLines) productionLines = data.productionLines;
+                    if (data.personnelTags) personnelTags = data.personnelTags;
+                    if (data.specialStatuses) specialStatuses = data.specialStatuses;
+                    if (data.currentShiftMode) currentShiftMode = data.currentShiftMode;
+                    if (data.date) {
+                        document.getElementById('year').value = data.date.year;
+                        document.getElementById('month').value = data.date.month;
+                        document.getElementById('day').value = data.date.day;
+                    }
+                }
+                
+                // 加载排班数据
+                const savedSchedule = localStorage.getItem('scheduleData');
+                if (savedSchedule) {
+                    const scheduleData = JSON.parse(savedSchedule);
+                    const scheduleCells = document.querySelectorAll('.schedule-cell');
+                    scheduleData.forEach(item => {
+                        if (scheduleCells[item.index]) {
+                            scheduleCells[item.index].textContent = item.name;
+                            // 添加右键菜单功能
+                            scheduleCells[item.index].oncontextmenu = function(e) {
+                                e.preventDefault();
+                                showContextMenu(e, this);
+                            };
+                            // 设置为可拖动
+                            scheduleCells[item.index].draggable = true;
+                            scheduleCells[item.index].ondragstart = drag;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+            }
+        }
+        
+        // 初始化表格
+        function initTable() {
+            const tbody = document.querySelector('#scheduleTable tbody');
+            tbody.innerHTML = '';
+            
+            productionLines.forEach(line => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${line.line}</td>
+                    <td class="editable" onclick="editCell(this)">${line.product}</td>
+                    <td>
+                        <div class="position-list">
+                            ${line.positions.map(pos => `
+                                <div class="position-item editable" onclick="editPosition(this, ${productionLines.indexOf(line)})">${pos}</div>
+                            `).join('')}
+                            <div class="add-position" onclick="addPosition(${productionLines.indexOf(line)})">+ 添加岗位</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="schedule-cell yellow" ondrop="drop(event)" ondragover="allowDrop(event)" draggable="true" ondragstart="drag(event)"></div>
+                        <div class="schedule-cell yellow" ondrop="drop(event)" ondragover="allowDrop(event)" draggable="true" ondragstart="drag(event)"></div>
+                    </td>
+                    <td>
+                        <div class="schedule-cell green" ondrop="drop(event)" ondragover="allowDrop(event)" draggable="true" ondragstart="drag(event)"></div>
+                        <div class="schedule-cell green" ondrop="drop(event)" ondragover="allowDrop(event)" draggable="true" ondragstart="drag(event)"></div>
+                    </td>
+                    <td style="display: none;">
+                        <div class="schedule-cell" ondrop="drop(event)" ondragover="allowDrop(event)" draggable="true" ondragstart="drag(event)"></div>
+                        <div class="schedule-cell" ondrop="drop(event)" ondragover="allowDrop(event)" draggable="true" ondragstart="drag(event)"></div>
+                    </td>
+                    <td class="editable" onclick="editCell(this)"></td>
+                    <td class="editable" onclick="editCell(this)"></td>
+                    <td></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 添加特殊状态人员行
+            specialStatuses.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td colspan="3" class="green editable" onclick="editSpecialPerson(this, ${index}, 'name')">${item.name}</td>
+                    <td class="editable" onclick="editSpecialPerson(this, ${index}, 'status')">${item.status}</td>
+                    <td class="editable" onclick="editSpecialPerson(this, ${index}, 'note')">${item.note || ''}</td>
+                    <td><button onclick="deleteSpecialPerson(${index})" style="background-color: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer;">删除</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 添加添加特殊状态人员的行
+            const addRow = document.createElement('tr');
+            addRow.innerHTML = `
+                <td></td>
+                <td></td>
+                <td></td>
+                <td colspan="5" style="text-align: center;"><button onclick="addSpecialPerson()" style="background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 5px 10px;">+ 添加特殊状态人员</button></td>
+            `;
+            tbody.appendChild(addRow);
+        }
+        
+        // 编辑单元格内容
+        function editCell(cell) {
+            const originalValue = cell.textContent;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalValue;
+            input.style.width = '100%';
+            input.style.textAlign = 'center';
+            
+            input.onblur = function() {
+                const newValue = input.value.trim();
+                if (newValue) {
+                    cell.textContent = newValue;
+                    // 更新数据
+                    const rowIndex = cell.parentElement.rowIndex - 1;
+                    if (productionLines[rowIndex]) {
+                        productionLines[rowIndex].product = newValue;
+                        saveData(); // 保存数据
+                    }
+                } else {
+                    cell.textContent = originalValue;
+                }
+                cell.style.padding = '8px';
+            };
+            
+            input.onkeypress = function(e) {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            };
+            
+            cell.textContent = '';
+            cell.style.padding = '0';
+            cell.appendChild(input);
+            input.focus();
+        }
+        
+        // 编辑岗位
+        function editPosition(cell, lineIndex) {
+            const originalValue = cell.textContent;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalValue;
+            input.style.width = '100%';
+            input.style.textAlign = 'center';
+            
+            input.onblur = function() {
+                const newValue = input.value.trim();
+                if (newValue) {
+                    cell.textContent = newValue;
+                    // 更新数据
+                    const posIndex = Array.from(cell.parentElement.children).indexOf(cell);
+                    productionLines[lineIndex].positions[posIndex] = newValue;
+                    saveData(); // 保存数据
+                } else {
+                    cell.textContent = originalValue;
+                }
+                cell.style.padding = '2px';
+            };
+            
+            input.onkeypress = function(e) {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            };
+            
+            cell.textContent = '';
+            cell.style.padding = '0';
+            cell.appendChild(input);
+            input.focus();
+        }
+        
+        // 添加岗位
+        function addPosition(lineIndex) {
+            const positionList = event.target.parentElement;
+            const newPosition = '新岗位';
+            
+            // 添加到数据中
+            productionLines[lineIndex].positions.push(newPosition);
+            
+            // 更新表格
+            initTable();
+            saveData(); // 保存数据
+        }
+        
+        // 切换班次模式
+        function switchShiftMode(mode) {
+            currentShiftMode = mode;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.shift-selector button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-shift="${mode}"]`).classList.add('active');
+            
+            // 更新表格列
+            const shift3 = document.getElementById('shift3');
+            const shift3Cells = document.querySelectorAll('td:nth-child(6)');
+            const deleteColumn = document.querySelector('th:nth-child(9)');
+            const deleteCells = document.querySelectorAll('td:nth-child(9)');
+            
+            if (mode === 'three') {
+                shift3.style.display = 'table-cell';
+                shift3Cells.forEach(cell => {
+                    cell.style.display = 'table-cell';
+                });
+                deleteColumn.style.display = 'table-cell';
+                deleteCells.forEach(cell => {
+                    cell.style.display = 'table-cell';
+                });
+            } else {
+                shift3.style.display = 'none';
+                shift3Cells.forEach(cell => {
+                    cell.style.display = 'none';
+                });
+                deleteColumn.style.display = 'none';
+                deleteCells.forEach(cell => {
+                    cell.style.display = 'none';
+                });
+            }
+            
+            saveData(); // 保存数据
+        }
+        
+        // 添加人员标签
+        function addPersonTag() {
+            const input = document.getElementById('personName');
+            const name = input.value.trim();
+            
+            if (name) {
+                personnelTags.push(name);
+                renderPersonTags();
+                input.value = '';
+                saveData(); // 保存数据
+            }
+        }
+        
+        // 渲染人员标签
+        function renderPersonTags() {
+            const tagList = document.getElementById('tagList');
+            tagList.innerHTML = '';
+            
+            personnelTags.forEach((name, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'person-tag';
+                tag.innerHTML = `
+                    ${name}
+                    <button class="delete-btn" onclick="deletePersonTag(${index})">×</button>
+                `;
+                tag.draggable = true;
+                tag.ondragstart = drag;
+                tagList.appendChild(tag);
+            });
+        }
+        
+        // 删除人员标签
+        function deletePersonTag(index) {
+            personnelTags.splice(index, 1);
+            renderPersonTags();
+            saveData(); // 保存数据
+        }
+        
+        // 添加特殊状态人员
+        function addSpecialPerson() {
+            specialStatuses.push({ name: '新人员', status: '病假', note: '' });
+            initTable();
+            saveData(); // 保存数据
+        }
+        
+        // 编辑特殊状态人员
+        function editSpecialPerson(cell, index, field) {
+            const originalValue = cell.textContent;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalValue;
+            input.style.width = '100%';
+            input.style.textAlign = 'center';
+            
+            input.onblur = function() {
+                const newValue = input.value.trim();
+                if (newValue) {
+                    cell.textContent = newValue;
+                    // 更新数据
+                    specialStatuses[index][field] = newValue;
+                    saveData(); // 保存数据
+                } else {
+                    cell.textContent = originalValue;
+                }
+                cell.style.padding = '8px';
+            };
+            
+            input.onkeypress = function(e) {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            };
+            
+            cell.textContent = '';
+            cell.style.padding = '0';
+            cell.appendChild(input);
+            input.focus();
+        }
+        
+        // 删除特殊状态人员
+        function deleteSpecialPerson(index) {
+            specialStatuses.splice(index, 1);
+            initTable();
+            saveData(); // 保存数据
+        }
+        
+        // 编辑标题
+        function editTitle(title) {
+            const originalValue = title.textContent;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalValue;
+            input.style.width = '100%';
+            input.style.textAlign = 'center';
+            input.style.fontSize = '24px';
+            input.style.fontWeight = 'bold';
+            
+            input.onblur = function() {
+                const newValue = input.value.trim();
+                if (newValue) {
+                    title.textContent = newValue;
+                } else {
+                    title.textContent = originalValue;
+                }
+                title.style.padding = '0';
+            };
+            
+            input.onkeypress = function(e) {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            };
+            
+            title.textContent = '';
+            title.style.padding = '0';
+            title.appendChild(input);
+            input.focus();
+        }
+        
+        // 拖动开始
+        function drag(event) {
+            // 确保获取正确的人员名称
+            let name = '';
+            // 检查是否是人员标签
+            if (event.target.classList.contains('person-tag')) {
+                // 从人员标签中获取名称，排除删除按钮
+                name = event.target.textContent.replace('×', '').trim();
+            } else if (event.target.closest('.person-tag')) {
+                // 如果点击的是删除按钮，从父元素获取名称
+                name = event.target.closest('.person-tag').textContent.replace('×', '').trim();
+            } else {
+                // 对于表内的人员，直接获取文本
+                name = event.target.textContent.trim();
+            }
+            event.dataTransfer.setData('text', name);
+            // 存储拖动的元素，以便在放置后清空
+            draggedElement = event.target;
+        }
+        
+        // 允许放置
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+        
+        // 放置
+        function drop(event) {
+            event.preventDefault();
+            const name = event.dataTransfer.getData('text');
+            event.target.textContent = name;
+            // 添加右键菜单功能
+            event.target.oncontextmenu = function(e) {
+                e.preventDefault();
+                showContextMenu(e, this);
+            };
+            // 设置为可拖动
+            event.target.draggable = true;
+            event.target.ondragstart = drag;
+            
+            // 只清空表内的拖动元素，不清空人员标签
+            if (draggedElement && draggedElement !== event.target) {
+                // 检查拖动的元素是否是人员标签
+                if (!draggedElement.classList.contains('person-tag') && !draggedElement.closest('.person-tag')) {
+                    draggedElement.innerHTML = '';
+                }
+                draggedElement = null;
+            }
+            
+            saveData(); // 保存数据
+        }
+        
+        // 显示右键菜单
+        function showContextMenu(e, cell) {
+            // 移除已有的右键菜单
+            const existingMenu = document.getElementById('contextMenu');
+            if (existingMenu) {
+                existingMenu.remove();
+            }
+            
+            // 创建右键菜单
+            const menu = document.createElement('div');
+            menu.id = 'contextMenu';
+            menu.style.position = 'absolute';
+            menu.style.left = e.pageX + 'px';
+            menu.style.top = e.pageY + 'px';
+            menu.style.backgroundColor = 'white';
+            menu.style.border = '1px solid #ddd';
+            menu.style.borderRadius = '4px';
+            menu.style.padding = '5px';
+            menu.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+            menu.style.zIndex = '1000';
+            
+            // 添加删除选项
+            const deleteOption = document.createElement('div');
+            deleteOption.textContent = '删除';
+            deleteOption.style.padding = '5px 10px';
+            deleteOption.style.cursor = 'pointer';
+            deleteOption.onclick = function() {
+                cell.innerHTML = '';
+                menu.remove();
+                saveData(); // 保存数据
+            };
+            
+            deleteOption.onmouseover = function() {
+                this.style.backgroundColor = '#f0f0f0';
+            };
+            
+            deleteOption.onmouseout = function() {
+                this.style.backgroundColor = 'white';
+            };
+            
+            menu.appendChild(deleteOption);
+            document.body.appendChild(menu);
+            
+            // 点击其他地方关闭右键菜单
+            document.onclick = function() {
+                if (document.getElementById('contextMenu')) {
+                    document.getElementById('contextMenu').remove();
+                }
+            };
+        }
+        
+        // 绑定班次切换事件
+        document.querySelectorAll('.shift-selector button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                switchShiftMode(this.dataset.shift);
+            });
+        });
+        
+        // 绑定帮助按钮事件
+        document.getElementById('helpBtn').addEventListener('click', function() {
+            document.getElementById('helpModal').style.display = 'block';
+        });
+        
+        // 绑定关闭帮助弹窗事件
+        document.getElementById('closeHelp').addEventListener('click', function() {
+            document.getElementById('helpModal').style.display = 'none';
+        });
+        
+        // 点击弹窗外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('helpModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        };
+        
+        // 绑定保存图片按钮事件
+        document.getElementById('saveImageBtn').addEventListener('click', function() {
+            saveAsImage();
+        });
+        
+        // 保存为图片
+        function saveAsImage() {
+            // 获取日期信息
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            const day = document.getElementById('day').value;
+            const dateStr = `${year}年${month}月${day}日`;
+            
+            // 获取标题
+            const title = document.querySelector('h1').textContent;
+            
+            // 获取表格
+            const table = document.querySelector('#scheduleTable');
+            
+            // 显示加载提示
+            const originalText = document.getElementById('saveImageBtn').textContent;
+            document.getElementById('saveImageBtn').textContent = '生成中...';
+            document.getElementById('saveImageBtn').disabled = true;
+            
+            try {
+                // 创建临时容器，包含标题、日期和表格
+                const tempContainer = document.createElement('div');
+                tempContainer.style.backgroundColor = '#ffffff';
+                tempContainer.style.padding = '20px';
+                tempContainer.style.border = '1px solid #ddd';
+                
+                // 添加标题
+                const tempTitle = document.createElement('h1');
+                tempTitle.textContent = title;
+                tempTitle.style.textAlign = 'center';
+                tempTitle.style.marginBottom = '15px';
+                tempContainer.appendChild(tempTitle);
+                
+                // 添加日期
+                const tempDate = document.createElement('div');
+                tempDate.textContent = dateStr;
+                tempDate.style.textAlign = 'center';
+                tempDate.style.marginBottom = '20px';
+                tempDate.style.fontSize = '16px';
+                tempDate.style.fontWeight = 'bold';
+                tempDate.style.color = '#333';
+                tempContainer.appendChild(tempDate);
+                
+                // 添加表格
+                const tempTable = table.cloneNode(true);
+                tempTable.style.width = '100%';
+                tempTable.style.borderCollapse = 'collapse';
+                tempContainer.appendChild(tempTable);
+                
+                // 将临时容器添加到页面
+                document.body.appendChild(tempContainer);
+                
+                // 捕获临时容器
+                html2canvas(tempContainer, {
+                    scale: 2, // 提高分辨率，使图片更清晰
+                    useCORS: true, // 允许跨域图片
+                    logging: true,
+                    backgroundColor: '#ffffff', // 设置白色背景
+                    allowTaint: true, // 允许有污染的图片
+                    removeContainer: false
+                }).then(canvas => {
+                    console.log('Canvas created:', canvas.width, 'x', canvas.height);
+                    
+                    // 移除临时容器
+                    document.body.removeChild(tempContainer);
+                    
+                    // 直接使用toDataURL方法
+                    const dataUrl = canvas.toDataURL('image/png');
+                    console.log('Data URL length:', dataUrl.length);
+                    
+                    // 恢复按钮状态
+                    document.getElementById('saveImageBtn').textContent = originalText;
+                    document.getElementById('saveImageBtn').disabled = false;
+                    
+                    // 使用传统下载方式
+                    const link = document.createElement('a');
+                    link.download = '排班表.png';
+                    link.href = dataUrl;
+                    link.click();
+                    
+                    alert('保存成功！');
+                }).catch(error => {
+                    console.error('生成图片失败:', error);
+                    // 移除临时容器
+                    if (tempContainer && tempContainer.parentNode) {
+                        document.body.removeChild(tempContainer);
+                    }
+                    // 恢复按钮状态
+                    document.getElementById('saveImageBtn').textContent = originalText;
+                    document.getElementById('saveImageBtn').disabled = false;
+                    alert('生成图片失败，请重试\n错误信息: ' + error.message);
+                });
+            } catch (error) {
+                console.error('保存图片异常:', error);
+                // 恢复按钮状态
+                document.getElementById('saveImageBtn').textContent = originalText;
+                document.getElementById('saveImageBtn').disabled = false;
+                alert('保存图片异常，请重试\n错误信息: ' + error.message);
+            }
+        }
+        
+        // 初始化
+        initTable();
+        
+        // 从本地存储加载数据
+        loadData();
+        
+        // 如果没有加载到数据，添加一些默认人员标签
+        if (personnelTags.length === 0) {
+            personnelTags = ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十'];
+            renderPersonTags();
+            saveData(); // 保存默认数据
+        } else {
+            renderPersonTags();
+        }
+    </script>
+</body>
+</html>
