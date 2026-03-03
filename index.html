@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>排班表</title>
         <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
         <style>
         * {
             margin: 0;
@@ -165,24 +166,27 @@
             display: flex;
             gap: 5px;
             margin-bottom: 15px;
+            padding: 0 2px;
         }
         
         .tag-input input {
             flex: 1;
-            padding: 8px;
+            padding: 6px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            font-size: 16px;
+            font-size: 14px;
+            max-width: 120px;
         }
         
         .tag-input button {
-            padding: 8px 12px;
+            padding: 6px 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
             background-color: #4CAF50;
             color: white;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
+            white-space: nowrap;
         }
         
         .tag-list {
@@ -199,6 +203,12 @@
             text-align: center;
             position: relative;
             font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .person-tag.selected {
+            background-color: #ffcc80;
+            border: 2px solid #ff9800;
         }
         
         .person-tag .delete-btn {
@@ -376,9 +386,11 @@
         <div class="header">
             <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 20px;">
                 <h1 class="editable" onclick="editTitle(this)" style="text-align: center; margin-bottom: 15px;">排班表</h1>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                     <button id="helpBtn" style="background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 8px 16px;">帮助</button>
                     <button id="saveImageBtn" style="background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 10px 20px; font-size: 16px;">保存为图片</button>
+                    <button onclick="addProductionLine()" style="background-color: #ff9800; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 8px 16px;">添加生产线</button>
+                    <button onclick="removeProductionLine()" style="background-color: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 8px 16px;">删除生产线</button>
                 </div>
             </div>
             <div class="date-selector">
@@ -410,8 +422,9 @@
                     <h3>人员管理</h3>
                     <ul>
                         <li><strong>添加人员标签</strong>：在右侧输入人员名字，点击"添加"按钮</li>
+                        <li><strong>批量导入人员</strong>：点击"选择文件"按钮，选择txt、csv或xlsx文件，然后点击"批量导入"按钮。系统会自动识别空格、标点等符号间隔来区分人名</li>
                         <li><strong>删除人员标签</strong>：点击人员标签右上角的×按钮</li>
-                        <li><strong>排班</strong>：将人员标签拖动到左侧班次的人员位置中</li>
+                        <li><strong>排班</strong>：将人员标签拖动到左侧班次的人员位置中，或点击人员标签使其变色，然后点击目标单元格</li>
                         <li><strong>删除表内人员</strong>：在人员上右键点击，选择"删除"选项</li>
                     </ul>
                     
@@ -462,6 +475,10 @@
                     <input type="text" id="personName" placeholder="输入人员名字">
                     <button onclick="addPersonTag()">添加</button>
                 </div>
+                <div style="margin-bottom: 15px;">
+                    <input type="file" id="personFile" accept=".txt,.csv,.xlsx" style="margin-bottom: 10px;">
+                    <button onclick="importPersons()" style="background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 5px 10px;">批量导入</button>
+                </div>
                 <div class="tag-list" id="tagList">
                     <!-- 人员标签将通过JavaScript动态生成 -->
                 </div>
@@ -472,23 +489,23 @@
     <script>
         // 初始化数据
         const productionLines = [
-            { line: 'A1', product: '丰田', positions: ['焊接', '检验'] },
-            { line: 'A2', product: '丰田', positions: ['焊接', '检验'] },
-            { line: 'A3', product: '72AD', positions: ['焊接', '平衡点焊', '检验'] },
-            { line: 'A4', product: '7997', positions: ['点焊', '平衡点焊', '检验'] },
-            { line: 'A5', product: '283/2834', positions: ['焊接', '检验'] },
-            { line: 'A6', product: 'ECO2/E0T', positions: ['焊接', '点焊', '检验'] },
-            { line: 'A7', product: '86co', positions: ['焊接', '检验'] },
-            { line: 'A8', product: '59L', positions: ['焊接', '检验'] },
-            { line: 'A10', product: '1188', positions: ['焊接', '检验'] },
-            { line: 'A11', product: '86co', positions: ['焊接', '检验'] },
-            { line: 'A12', product: '1033', positions: ['焊接', '平衡点焊', '检验'] },
-            { line: 'A15', product: '1080/3764', positions: ['焊接', '平衡点焊', '检验', '打码'] },
-            { line: 'A14', product: 'ED6/664/87537', positions: ['焊接', '平衡点焊', '检验'] },
-            { line: 'A16', product: '7987', positions: ['焊接', '点焊', '检验'] },
-            { line: 'A17', product: '5521', positions: ['焊接', '检验'] },
-            { line: 'A18', product: '1379', positions: ['焊接', '检验'] },
-            { line: 'A19', product: '9857', positions: ['焊接', '检验'] }
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] },
+            { line: '', product: '', positions: [] }
         ];
         
         let currentShiftMode = 'two'; // 默认两班制
@@ -579,7 +596,7 @@
             productionLines.forEach(line => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${line.line}</td>
+                    <td class="editable" onclick="editLineName(this, ${productionLines.indexOf(line)})"><span contenteditable="true">${line.line}</span></td>
                     <td class="editable" onclick="editCell(this)">${line.product}</td>
                     <td>
                         <div class="position-list">
@@ -632,6 +649,9 @@
                 <td colspan="5" style="text-align: center;"><button onclick="addSpecialPerson()" style="background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 5px 10px;">+ 添加特殊状态人员</button></td>
             `;
             tbody.appendChild(addRow);
+            
+            // 添加单元格点击事件
+            addCellClickEvents();
         }
         
         // 编辑单元格内容
@@ -785,7 +805,53 @@
                 `;
                 tag.draggable = true;
                 tag.ondragstart = drag;
+                // 添加点击选择功能
+                tag.onclick = function() {
+                    selectPersonTag(name, this);
+                };
                 tagList.appendChild(tag);
+            });
+        }
+        
+        // 选择人员标签
+        let selectedPerson = null;
+        let selectedTag = null;
+        function selectPersonTag(name, tag) {
+            // 取消之前的选择
+            if (selectedTag) {
+                selectedTag.classList.remove('selected');
+            }
+            
+            // 设置新的选择
+            selectedPerson = name;
+            selectedTag = tag;
+            tag.classList.add('selected');
+        }
+        
+        // 为所有排班单元格添加点击事件
+        function addCellClickEvents() {
+            const scheduleCells = document.querySelectorAll('.schedule-cell');
+            scheduleCells.forEach(cell => {
+                cell.onclick = function() {
+                    if (selectedPerson) {
+                        this.textContent = selectedPerson;
+                        // 添加右键菜单功能
+                        this.oncontextmenu = function(e) {
+                            e.preventDefault();
+                            showContextMenu(e, this);
+                        };
+                        // 设置为可拖动
+                        this.draggable = true;
+                        this.ondragstart = drag;
+                        // 取消标签的选中状态
+                        if (selectedTag) {
+                            selectedTag.classList.remove('selected');
+                        }
+                        selectedPerson = null;
+                        selectedTag = null;
+                        saveData(); // 保存数据
+                    }
+                };
             });
         }
         
@@ -794,6 +860,106 @@
             personnelTags.splice(index, 1);
             renderPersonTags();
             saveData(); // 保存数据
+        }
+        
+        // 批量导入人员
+        function importPersons() {
+            const fileInput = document.getElementById('personFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('请选择要导入的文件');
+                return;
+            }
+            
+            const fileName = file.name;
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+            
+            if (fileExtension === 'txt' || fileExtension === 'csv') {
+                // 处理文本文件
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    const persons = parseTextContent(content);
+                    addPersons(persons);
+                };
+                reader.readAsText(file);
+            } else if (fileExtension === 'xlsx') {
+                // 处理Excel文件
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    const persons = [];
+                    // 处理Excel数据
+                    if (jsonData.length > 0) {
+                        // 检查是否有表头
+                        const firstRow = jsonData[0];
+                        if (typeof firstRow === 'object') {
+                            // 有表头，遍历所有列
+                            jsonData.forEach(row => {
+                                for (const key in row) {
+                                    if (row[key]) {
+                                        persons.push(row[key].toString().trim());
+                                    }
+                                }
+                            });
+                        } else {
+                            // 无表头，直接使用值
+                            jsonData.forEach(value => {
+                                if (value) {
+                                    persons.push(value.toString().trim());
+                                }
+                            });
+                        }
+                    }
+                    
+                    addPersons(persons);
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                alert('不支持的文件类型，请选择txt、csv或xlsx文件');
+            }
+        }
+        
+        // 解析文本内容，识别空格、标点等符号间隔来区分人名
+        function parseTextContent(content) {
+            // 替换各种分隔符为换行符
+            let normalizedContent = content
+                .replace(/[，,，;；、\s]+/g, '\n') // 替换逗号、分号、顿号和空白字符为换行符
+                .replace(/[.。]+/g, '\n') // 替换句号为换行符
+                .replace(/[\r\n]+/g, '\n'); // 规范化换行符
+            
+            // 分割成行并过滤空行
+            const lines = normalizedContent.split('\n').filter(line => line.trim() !== '');
+            
+            return lines;
+        }
+        
+        // 添加多个人员
+        function addPersons(persons) {
+            if (persons.length === 0) {
+                alert('未找到可导入的人员');
+                return;
+            }
+            
+            // 去重
+            const uniquePersons = [...new Set(persons)];
+            
+            // 添加到人员标签
+            uniquePersons.forEach(person => {
+                if (person && person.trim() !== '' && !personnelTags.includes(person.trim())) {
+                    personnelTags.push(person.trim());
+                }
+            });
+            
+            renderPersonTags();
+            saveData(); // 保存数据
+            alert(`成功导入 ${uniquePersons.length} 个人员`);
         }
         
         // 添加特殊状态人员
@@ -842,6 +1008,23 @@
             specialStatuses.splice(index, 1);
             initTable();
             saveData(); // 保存数据
+        }
+        
+        // 编辑生产线名称
+        function editLineName(cell, lineIndex) {
+            const span = cell.querySelector('span');
+            span.addEventListener('blur', function() {
+                const newValue = this.textContent.trim();
+                productionLines[lineIndex].line = newValue;
+                saveData(); // 保存数据
+            });
+            
+            span.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                }
+            });
         }
         
         // 编辑标题
@@ -1008,6 +1191,24 @@
         document.getElementById('saveImageBtn').addEventListener('click', function() {
             saveAsImage();
         });
+        
+        // 添加生产线
+        function addProductionLine() {
+            productionLines.push({ line: '', product: '', positions: [] });
+            initTable();
+            saveData(); // 保存数据
+        }
+        
+        // 删除生产线
+        function removeProductionLine() {
+            if (productionLines.length > 1) {
+                productionLines.pop();
+                initTable();
+                saveData(); // 保存数据
+            } else {
+                alert('至少保留一条生产线');
+            }
+        }
         
         // 保存为图片
         function saveAsImage() {
